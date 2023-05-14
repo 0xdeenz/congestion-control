@@ -5,6 +5,7 @@ include "../lib/leaf_existence.circom";
 include "../lib/transaction_existence.circom";
 
 // Processes the base state update of 2**n accounts as a result of 2**m update transactions
+// Only a single token type is supported. Support for withdrawals has also been removed for the sake of simplicity.
 template BaseStateUpdate(n, m) {
     // Transaction tree root
     signal input txRoot;
