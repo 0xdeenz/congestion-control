@@ -1,0 +1,7 @@
+{
+  "name": "congestion-control",
+  "version": "1.0.0",
+  "dependencies": {
+    "circomlib": "^2.0.5"
+  }
+}
