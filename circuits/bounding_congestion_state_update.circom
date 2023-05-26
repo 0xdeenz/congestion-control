@@ -76,11 +76,12 @@ template BoundingCongestionStateUpdate(n, m) {
         senderLeaves[i][0].nTransactions <== fromNumberTransactions[i];
 
         // BOUNDING CONGESTION SPAM PREVENTION
-        comparators[i] = GreaterEqThan(22);
-        comparators[i].in[0] <== fromCurrentPlan[i][0] + fromCurrentPlan[i][1] * lastBlock;
+        // Here we enforce that fromCurrentPlan[i][0] + fromCurrentPlan[i][1] * lastBlock >= fromNumberTransactions[i] + 1, as `fromBlockTransactions` can only increase one by one
+        comparators[i] = IsEqual();
+        comparators[i].in[0] <== fromCurrentPlan[i][0] + fromCurrentPlan[i][1] * lastBlock + 1;
         comparators[i].in[1] <== fromNumberTransactions[i] + 1;
 
-        comparators[i].out === 1;
+        comparators[i].out === 0;
 
         // After debiting amount
         senderLeaves[i][1] = BoundingCongestionAccountLeaf();

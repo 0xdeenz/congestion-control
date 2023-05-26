@@ -94,11 +94,12 @@ template RollingCongestionStateUpdate(n, m, nBlocks) {
         transactionCounters[i].R <== 1;
         transactionCounters[i].sel <== transactionCounterResets[i].out;
 
-        comparators[i] = GreaterEqThan(22);
-        comparators[i].in[0] <== fromCurrentPlan[i];
+        // Here we enforce that fromCurrentPlan[i] >= transactionCounters[i].outR, as the `transactionCounters` can only increase one by one
+        comparators[i] = IsEqual();
+        comparators[i].in[0] <== fromCurrentPlan[i] + 1;
         comparators[i].in[1] <== transactionCounters[i].outR;
 
-        comparators[i].out === 1;
+        comparators[i].out === 0;
 
         // After debiting amount
         senderLeaves[i][1] = RollingCongestionAccountLeaf();
