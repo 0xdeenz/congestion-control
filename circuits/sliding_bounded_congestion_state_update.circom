@@ -66,7 +66,8 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
     component receiverLeaves[2**m][2];
     
     // Components for verifying spam prevention
-    component comparators[2**m][2];
+    component equalityComparators[2**m];
+    component zeroComparators[2**m];
     component sameBlock[2**m];
 
     for (var i = 0; i < 2**m; i++) {
@@ -87,11 +88,17 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
         sameBlock[i].in <== lastBlock - fromLastOnline[i];
 
         // Here we enforce that fromCurrentPlan >= fromBlockTransactions[i] * sameBlock + 1, as the number of `fromBlockTransactions` can only increase one by one
-        comparators[i][0] = IsEqual();
-        comparators[i][0].in[0] <== fromCurrentPlan[i][1] + 1; 
-        comparators[i][0].in[1] <== fromBlockTransactions[i] * sameBlock[i].out + 1;
+        equalityComparators[i] = IsEqual();
+        equalityComparators[i].in[0] <== fromCurrentPlan[i][1] + 1; 
+        equalityComparators[i].in[1] <== fromBlockTransactions[i] * sameBlock[i].out + 1;
 
-        comparators[i][0].out === 0;
+        equalityComparators[i].out === 0;
+
+        // Now we enforce that the user never went above their allocated credits
+        zeroComparators[i] = IsZero();
+        zeroComparators[i].in <== fromCredits[i] + fromCurrentPlan[i][1] * (lastBlock - fromLastOnline[i]) - 2;
+
+        zeroComparators[i].out === 0;
 
         // After debiting amount
         senderLeaves[i][1] = SlidingBoundedCongestionAccountLeaf();
