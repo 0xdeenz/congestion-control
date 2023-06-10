@@ -10,12 +10,11 @@ template SlidingBoundedCongestionAccountLeaf() {
     signal input nonce;
     signal input currentPlan[2];
     signal input lastOnline;
-    signal input credits;
-    signal input blockTransactions;
+    signal input credit;
 
     signal output out;
 
-    component accountLeaf = Poseidon(9);
+    component accountLeaf = Poseidon(8);
     accountLeaf.inputs[0] <== X;
     accountLeaf.inputs[1] <== Y;
     accountLeaf.inputs[2] <== balance;
@@ -23,8 +22,7 @@ template SlidingBoundedCongestionAccountLeaf() {
     accountLeaf.inputs[4] <== currentPlan[0];  // alpha
     accountLeaf.inputs[5] <== currentPlan[1];  // beta
     accountLeaf.inputs[6] <== lastOnline;
-    accountLeaf.inputs[7] <== credits;
-    accountLeaf.inputs[8] <== blockTransactions;
+    accountLeaf.inputs[7] <== credit;
 
     out <== accountLeaf.out;
 }

@@ -52,12 +52,10 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
     // Congestion control values
     signal input fromCurrentPlan[2**m][2];
     signal input fromLastOnline[2**m];
-    signal input fromCredits[2**m];
-    signal input fromBlockTransactions[2**m];
+    signal input fromCredit[2**m];
     signal input toCurrentPlan[2**m][2];
     signal input toLastOnline[2**m];
-    signal input toCredits[2**m];
-    signal input toBlockTransactions[2**m];
+    signal input toCredit[2**m];
 
     signal output newAccountsRoot;
 
@@ -68,7 +66,8 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
     // Components for verifying spam prevention
     component equalityComparators[2**m];
     component zeroComparators[2**m];
-    component sameBlock[2**m];
+    signal intermediateCredit[2**m][2];
+    signal newSenderCredit[2**m];
 
     for (var i = 0; i < 2**m; i++) {
         // Initial state
@@ -80,24 +79,20 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
         senderLeaves[i][0].currentPlan[0] <== fromCurrentPlan[i][0];
         senderLeaves[i][0].currentPlan[1] <== fromCurrentPlan[i][1];
         senderLeaves[i][0].lastOnline <== fromLastOnline[i];
-        senderLeaves[i][0].credits <== fromCredits[i];
-        senderLeaves[i][0].blockTransactions <== fromBlockTransactions[i];
+        senderLeaves[i][0].credit <== fromCredit[i];
 
         // SLIDING BOUNDED CONGESTION SPAM PREVENTION
-        sameBlock[i] = IsZero();
-        sameBlock[i].in <== lastBlock - fromLastOnline[i];
+        equalityComparators[i] = LessThan(252);  // depends a lot on the exptected upper bound, can be bumped down to reduce constraints
+        equalityComparators[i].in[0] <== fromCredit[i] + fromCurrentPlan[i][0] * (lastBlock - fromLastOnline[i]);
+        equalityComparators[i].in[1] <== fromCurrentPlan[i][1];
 
-        // Here we enforce that fromCurrentPlan >= fromBlockTransactions[i] * sameBlock + 1, as the number of `fromBlockTransactions` can only increase one by one
-        equalityComparators[i] = IsEqual();
-        equalityComparators[i].in[0] <== fromCurrentPlan[i][1] + 1; 
-        equalityComparators[i].in[1] <== fromBlockTransactions[i] * sameBlock[i].out + 1;
+        intermediateCredit[i][0] <== fromCredit[i] + fromCurrentPlan[i][0] * (lastBlock - fromLastOnline[i]);
+        intermediateCredit[i][1] <== (1 - equalityComparators[i].out) * fromCurrentPlan[i][1];
+        newSenderCredit[i] <== equalityComparators[i].out * intermediateCredit[i][0] + intermediateCredit[i][1] - 1;
 
-        equalityComparators[i].out === 0;
-
-        // Now we enforce that the user never went above their allocated credits
         zeroComparators[i] = IsZero();
-        zeroComparators[i].in <== fromCredits[i] + fromCurrentPlan[i][1] * (lastBlock - fromLastOnline[i]) - 2;
-
+        zeroComparators[i].in <== newSenderCredit[i] + 1;
+        
         zeroComparators[i].out === 0;
 
         // After debiting amount
@@ -109,8 +104,7 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
         senderLeaves[i][1].currentPlan[0] <== fromCurrentPlan[i][0];
         senderLeaves[i][1].currentPlan[1] <== fromCurrentPlan[i][1];
         senderLeaves[i][1].lastOnline <== lastBlock;
-        senderLeaves[i][1].credits <== fromCredits[i] + fromCurrentPlan[i][1] * (lastBlock - fromLastOnline[i]) - 1;
-        senderLeaves[i][1].blockTransactions <== fromBlockTransactions[i] * sameBlock[i].out + 1;
+        senderLeaves[i][1].credit <== newSenderCredit[i];
         
         // Initial state
         receiverLeaves[i][0] = SlidingBoundedCongestionAccountLeaf();
@@ -121,8 +115,7 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
         receiverLeaves[i][0].currentPlan[0] <== toCurrentPlan[i][0];
         receiverLeaves[i][0].currentPlan[1] <== toCurrentPlan[i][1];
         receiverLeaves[i][0].lastOnline <== toLastOnline[i];
-        receiverLeaves[i][0].credits <== toCredits[i];
-        receiverLeaves[i][0].blockTransactions <== toBlockTransactions[i];
+        receiverLeaves[i][0].credit <== toCredit[i];
 
         // After crediting amount
         receiverLeaves[i][1] = SlidingBoundedCongestionAccountLeaf();
@@ -133,8 +126,7 @@ template SlidingBoundedCongestionStateUpdate(n, m) {
         receiverLeaves[i][1].currentPlan[0] <== toCurrentPlan[i][0];
         receiverLeaves[i][1].currentPlan[1] <== toCurrentPlan[i][1];
         receiverLeaves[i][1].lastOnline <== toLastOnline[i];
-        receiverLeaves[i][1].credits <== toCredits[i];
-        receiverLeaves[i][1].blockTransactions <== toBlockTransactions[i];
+        receiverLeaves[i][1].credit <== toCredit[i];
     }
 
     component baseStateUpdate = BaseStateUpdate(n, m);
